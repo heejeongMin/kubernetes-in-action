@@ -377,3 +377,115 @@ FIELDS:
        | 레이블의 개념이 없는 파드들 | 파드를 레이블로 조직적 관리 |
        | :-------------- | :----------- |
        | ![before_label.png](img/before_label.png) | ![after_label.png](img/after_label.png) | 
+       
+    - 파드를 생성할 때 레이블 지정하는 방법과 레이블 확인방법
+        - metadata.labels에 키-밸류로 적어주면 된다.  
+          label을 포함하여 리소스를 검색하고 싶을때에는 --show-lables 옵션을 사용하면 되며, 
+          그중 원하는 label만 컬럼화화여 보고 싶으면 -L 옵션을 사용하면 된다.  
+    ```yaml
+      apiVersion: v1
+      kind: Pod
+      metadata:
+          name: kubia-manual-v2
+          lables:
+              created_method: manual
+              env: prod
+      sepc:
+          containers:
+              -image: luksa/kubia
+               name: kubia
+               ports:
+               - containerPort: 8080
+                 protocol: TCP
+    ```
+    ```
+        kubectl get po --show-labels
+        kubectl get po -L created_method,env
+    ```
+    ![show_labels.png](img/show_labels.png)
+      
+    - 기존 파드 레이블 수정
+        - 새로 레이블을 추가할때와 기존의 레이블을 수정할대의 다른 점은 후자는 --overwrite 옵션이 붙어야한다. 
+     ```
+        kubectl labels po crane-pjmzv env=local
+        kubectl labels po crane-pjmzv env=debug --overwrite
+     ```
+     ![add_labels.png](img/add_labels.png)
+     ![modify_labels.png](img/modify_labels.png)
+     
+   - 레이블 셀렉터를 이용한 부분 집합 나열  
+     레이블 셀렉터는 특정 레이블로 태그된 파드의 부분 집합을 선택해 원하는 작업을 수행할 수 있게 해주며, 리소스를 필터링해주는 기준이된다.  
+     레이블 셀렉터는 리소스 중에서 다음 기준에 따라 리소스를 선택한다.
+        - 특정한 키를 포함하거나 포함하지 않는 테이블
+        - 특정한 키와 값을 가진 레이블
+        - 특정한 키를 갖고 있지만 다른 값을 가진 레이블  
+        
+     레이블 셀렉터를 사용해 파드 나열
+        - 대문자 L 옵션은 키를 컬럼화하여 조회해 주지만, 소문자 l 옵션은 명시한 키/밸류 값을 가진 파드만을 조회할 수 있다. 
+     ```
+        kubectl get pods -l created_method=manual
+     ```
+     ![label_selector.png](img/label_selector.png)
+     
+        - env 레이블을 가지고 있지만 값은 무엇이든 상관없는 파드를 보려면 다음과 같이 키만 명시한다.  
+          반대로 특정 키를 가지고 있지 않은 파드를 필터하고 싶을때는 '!키' 형태로 조회할 수 있다.
+     ```
+        kubectl get po -l env
+     ```
+     ![label_selector_key_filter.png](img/label_selector_key_filter.png)
+        - 더 많은 조건들 
+            - created_method!=manual
+            - env in (prod, debug)
+            - env notin (prod, debug)
+            - app=crane,env=debug
+            
+   - 레이블 셀렉터를 이용한 파드 스케줄링 제한  
+     쿠버네티스에게 파드를 어느 노드에 스케줄링할지 알려줄 필요가 없지만, 컨트롤 해야하는 상황이 있다고 하다.  
+     예를 들어, 노드의 하드웨어 인프라가 동일하지 않은 경우 일 수 있는데 워크 노드의 일부는 HDD를 가지고 있고, 나머지는 SSD를 가지고 있는 경우,
+     특정 파드를 한 그룹에 나머지 파드는 나머지 그룹에 스케줄링 되도록 할 수 있다.  
+     쿠버네티스의 전체적인 아이디어는 그 위에 실행되는 애플리케이션으로 부터 실제 인프라스트럭쳐를 숨기는데 있다. 구체적으로 어떤 노드에 스케줄링되어야하는지 
+     지정하게 되면 애플리케이션과 인프라스트럭쳐가 결합되기 때문이다. 정확한 노드를 지정하는대신, 노드의 요구사항을 기술하고 쿠버네티스가 선택할 수 있도록 해야한다. 
+     
+     - 워커 노드 분류에 레이블 사용  
+       일반적으로 ops팀에서는 새 노드를 클러스터에 추가할 때 노드가 제공하는 하드웨어나 파드를 스케줄링 할 때 유용하게 사용할 수 있는 기타 사항을 레이블로 지정해 노드를 분류한다. 
+       
+     ![node_add_label.png](img/node_add_label.png)
+     ![node_show_label.png](img/node_show_label.png)
+
+     - 특정 노드에 파드 스케줄링  
+       - spec 섹션 안에 nodeSelector필드를 추가한다. 파드를 생성할 때 스케줄러는 gpu=true 레이블을 가진 노드 중에 선택한다.  
+       - 파드를 특정 노드에 스케줄링하는 것도 가능한데, 노드의 실제 호스트 이름을 지정한 경우이다. 다만 이런 경우 노드가 오프라인경우 스케줄링이 안될 수 있어 지양한다.
+     ```
+     apiVersion: v1
+     kind: Pod
+     metadata:
+         name: kubia-gpu
+         labels:
+             created_method: manual
+             env: prod
+     spec:
+         nodeSelector:
+           gpu: "true"
+         containers:
+         - image: luksa/kubia
+           name: kubia
+           ports:
+           - containerPort: 8080
+             protocol: TCP
+     ```
+     
+### 파드에 어노테이션 달기
+어노테이션은 키-값 쌍으로 레이블과 거의 비슷하지만 식별 정보를 가지지 않는다.  
+레이블은 오브젝트를 그룹화 하는데 사용할 수 있지만 어노테이션의 용도는 많은 정보를 보유하는데에 있다.  
+어노테이션은 흔히 쿠버네트스에 새로운 기능이 추가될 때 흔히 사용이 되는데, 일반적으로 새로운 기능의 알파 혹은 베타 버전의 API 오브젝트에 새로운 필드를 바로 도입하지 않는다.
+필드 대신 어노테이션을 사용하고, 필요한 API 변경이 명확해 지면 새로운 필드가 도입된다.  
+어플리케이션 개발자에게 어노테이션이 유용하게 사용되는 경우는 파드나 다른 API 오브젝트에 설명을 추가해둘 때 이다. 
+
+   
+- 어노테이션 추가 및 수정  
+  레이블을 만들 때와 같은 방법으로 파드를 생성할 때 어노테이션을 추가하는 것도 간으하고, 이미 존재하는 파드에 어노테이션을 추가하거나 수정하는 것도 가능하다. 
+  - 어노테이션 추가 : 어노테이션은 고유 접두사를 시작으로 하는 것이 좋은데 (heejeong.min) 그렇지 않을 경우 다른 도구나 라이브러리가 오브젝트에 어노테이션을 추가하면서 기존에 있는 어노테이션을 덮어씌울 수 있기 때문이다.
+  ```
+    kubectl annotate po kubia-manual-v2 heejeong.min/addAnnotation="first annot"
+  ```
+  ![pod_annotation.png](img/pod_annotation.png)
