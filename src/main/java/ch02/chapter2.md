@@ -58,7 +58,7 @@ Chapter2. 도커와 쿠버네티스 첫걸음
              도커 클라이언트는 호스트 OS에 위치하고, 데몬은 가상머신 내부에 위치한다.
              
          - image 의 이름은 소문자만 가능하다.
-         ![repository_lowercase.png](img/ch02/repository_lowercase.png)
+         ![repository_lowercase.png](img/repository_lowercase.png)
 
         
         //todo 78쪽 사진
@@ -105,7 +105,7 @@ Chapter2. 도커와 쿠버네티스 첫걸음
            
         docker ps     
     
-   ![running_containers.png](img/ch02/running_containers.png)
+   ![running_containers.png](img/running_containers.png)
         - CONTAINER ID : 16진수의 도커 컨테이너 ID  
         - NAMES : 컨테이너 이름  
         - "docker ps -a" 을 하면 현재 정지되어있는 컨테이너도 확인 할 수 있다. 
@@ -207,13 +207,13 @@ Chapter2. 도커와 쿠버네티스 첫걸음
    - 컨테이너에서 조회한 pid와 호스트 머신에서 조회한 컨테이너 프로세스의 pid가 다른 것을 볼수 있다. (격리 격리). 아래 사진 참조.
    
    **컨테이너 안에서 조회한 프로세스들과 완전한 파일 시스템** 
-   ![process_inside_container.png](img/ch02/process_inside_container.png)
+   ![process_inside_container.png](img/process_inside_container.png)
    
-   ![container_file_system.png](img/ch02/container_file_system.png)   
+   ![container_file_system.png](img/container_file_system.png)   
    **호스트 (로컬머신)에서 조회한 프로세스들과, 호스트에서 실행중인 컨테이너 프로세스** 
-   ![process_host.png](img/ch02/process_host.png)
+   ![process_host.png](img/process_host.png)
    
-   ![container_process_on_host.png](img/ch02/container_process_on_host.png)
+   ![container_process_on_host.png](img/container_process_on_host.png)
  
  
  - 컨테이너 중지와 삭제
@@ -239,7 +239,7 @@ Chapter2. 도커와 쿠버네티스 첫걸음
                 docker tag crane heejeong/crane
               
            태깅을 한 후, "docker images | head" 명령어를 통해 이미지를 확인 할 수 있는데, tag 이름만 다를 뿐 동일한 IMAGE ID를 가지고 있기 때문에 같은 이미지이다. 
-           ![image_tag.png](img/ch02/image_tag.png)
+           ![image_tag.png](img/image_tag.png)
           
         2. 도커 허브에 이미지를 푸시한다. 
             
@@ -249,13 +249,13 @@ Chapter2. 도커와 쿠버네티스 첫걸음
                 docker login -u heejeong 
             
             도커 허브에 올라간 모습
-            ![image_push_docker_hub.png](img/ch02/image_push_docker_hub.png)
+            ![image_push_docker_hub.png](img/image_push_docker_hub.png)
             
         3. 다른 머신에서 실행해 보기 
             
                 docker run -p 6060:8080 heejeong/crane
             
-            ![image_docker_hub_run.png](img/ch02/image_docker_hub_run.png)
+            ![image_docker_hub_run.png](img/image_docker_hub_run.png)
   
               
               
@@ -279,14 +279,14 @@ Chapter2. 도커와 쿠버네티스 첫걸음
    
          kubectl cluster-info
          
-   ![kubectl_cluster_info.png](img/ch02/kubectl_cluster_info.png) 
+   ![kubectl_cluster_info.png](img/kubectl_cluster_info.png) 
    
  '2. 클러스의 개념 이해하기
      - 각 노드는 도커, Kubelete, kube-proxy를 실행한다. 
      - Kubectl 클라이언트 명령어는 마스터 노드에서 실행중인 쿠버네티스 API 서버로 REST 요청을 보내 클러스트와 상호작용한다. 
    
    **노드가 세개인 쿠버네티스 클러스터와의 상호작용**  
-   ![kubernetes_cluster.png](img/ch02/kubernetes_cluster.png) 
+   ![kubernetes_cluster.png](img/kubernetes_cluster.png) 
    
    | 명령어 | 용도 | 추가설명 |
    | :-------------- | :----------- | :-------------- |
@@ -306,11 +306,11 @@ Chapter2. 도커와 쿠버네티스 첫걸음
             
            kubectl run crane --image=heejeong/crane --port=7070
        
-   ![kubectl_run_app.png](img/ch02/kubectl_run_app.png) 
+   ![kubectl_run_app.png](img/kubectl_run_app.png) 
    
    <<pod를 띄우면서 생긴 오류 1. **ImagePullBackOff**>>
         
-   ![kubectl_get_pods_ImagePullBackOff.png](img/ch02/kubectl_get_pods_ImagePullBackOff.png)
+   ![kubectl_get_pods_ImagePullBackOff.png](img/kubectl_get_pods_ImagePullBackOff.png)
         - 파드의 상태가 ImagePullBackOff인 경우는 이미지를 가져오지 못하여서 간격을 두고 계속 pull을 시도하는 상태이다. 
           처음 생성시 이미지에 "crane"을 사용하였더니, (로컬에서 docker build -t crane . 으로 생성한 이미지) 이미지를 가져오지 못하였고, 
           도커 허브에 올라간 이미지로 하니 정상 생성되었다. ("heejeong/crane")
@@ -321,7 +321,7 @@ Chapter2. 도커와 쿠버네티스 첫걸음
                    
                  kubectl logs crane
                  
-   ![pod_error_crashLoopBackOff.png](img/ch02/pod_error_crashLoopBackOff.png)
+   ![pod_error_crashLoopBackOff.png](img/pod_error_crashLoopBackOff.png)
            
    위 명령어를 통하여 확인하니, 기대했던데로 db 연결을 하지 못하였기 때문에 db연결을 그런데 crane-mysql로 시도하고 있었다.      
    crane-mysql은 내가 로컬에 띄운 mysql의 서비스 이름인데 로컬에서 docker-compose 만을 가지고 띄웠을때는 crane-mysql을 
@@ -336,20 +336,20 @@ Chapter2. 도커와 쿠버네티스 첫걸음
         
             docker network ls 
    
-   ![docker_network_ls.png](img/ch02/docker_network_ls.png)
+   ![docker_network_ls.png](img/docker_network_ls.png)
          
    2. minikube 네트워크의 subnet범위를 확인한다. 
    
             docker network inspect <network name>
    
-   ![docker_network_inspect.png](img/ch02/docker_network_inspect.png)
+   ![docker_network_inspect.png](img/docker_network_inspect.png)
             
   
    3. 나의 crane-mysql 을 minkube 서브넷 범위에 포함시켜준다.   
    
             docker network connect <target> <container tobe connected> --ip=<any valid IP on the target network subent>
    
-   ![docker_network_connect.png](img/ch02/docker_network_connect.png)
+   ![docker_network_connect.png](img/docker_network_connect.png)
 
    4. 다시 pod 를 띄우니 pod 내 어플리케이션 까지 정상적으로 노출된다. 
                  
@@ -359,10 +359,10 @@ Chapter2. 도커와 쿠버네티스 첫걸음
        - 각 파드는 자체 IP, 호스트 이름, 프로세스 등이 있는 논리적을 분리된 머신이며, 애플리케이션 프로세스를 실행하는 하나 이상의 컨테이너를 갖는다.
        - 파드에서 실행 중인 모든 컨테이너는 동일한 논리적인 머신에서 실행하는 것처럼 보이지만, 다른 파드에서 실행중인 컨테이너는 같은 워크노드에서 실행중이라도 다른 머신에서 실행중인 것으로 나타난다. 
        - 파드 라이프 사이클 https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/
-          ![pod_lifecycle.png](img/ch02/pod_lifecycle.png)
+          ![pod_lifecycle.png](img/pod_lifecycle.png)
 
   - 위의 파드까지 띄우는 과정은 다음과 같다. 
-        ![process_to_run_pod.png](img/ch02/process_to_run_pod.png)
+        ![process_to_run_pod.png](img/process_to_run_pod.png)
         
 '4. 실행중인 파드에 어떻게 접근할 수 있을까?  
     - 각 파드는 자체 IP주소를 가지고 있지만 이 주소는 클러스터 내부에 있으며 외부에서 접근이 불가능하다. 
@@ -377,7 +377,7 @@ Chapter2. 도커와 쿠버네티스 첫걸음
       - po는 pod를 의미하는 약어인데, 대부분의 리소스 유형은 약어를 가지고 있다고 한다.  
             - service : svc
             - replicationcontroller : rc
-![kubectl_expose.png](img/ch02/kubectl_expose.png)  
+![kubectl_expose.png](img/kubectl_expose.png)  
    
    - 서비스 조회하기  
    
@@ -464,22 +464,20 @@ Chapter2. 도커와 쿠버네티스 첫걸음
          kubectl create -f 
         ``` 
             
-        ![kubectl_create_rc.png](img/ch02/kubectl_create_rc.png) 
+        ![kubectl_create_rc.png](img/kubectl_create_rc.png) 
 
     3. replication controller가 생성되었는지 확인한다.  
         - rc는 replication controller의 약자
         - 생성된 replication controller는 metadata.name에서 정의한 이름을 따라간다.
             ``` 
              kubectl get rc  
-            ``` 
-            ![kubectl_get_rc.png](img/ch02/kubectl_get_rc.png) 
-            
+            ```             
     4. replication controller가 관리하는 파드는 자동으로 생성된다.  
         이름은 metadata.name을 따라가지만 식별 '-' 후 다섯자리가 더 붙는다자.
          ``` 
           kubectl get pods  
          ```
-        ![kubectl_get_pods.png](img/ch02/kubectl_get_pods.png) 
+        ![kubectl_get_pods.png](img/kubectl_get_pods.png) 
  
     5. 이제 replication controller에 대해서 loadbalancer를 생성한다. (minikube tunnel 도 열기)
         
@@ -490,7 +488,7 @@ Chapter2. 도커와 쿠버네티스 첫걸음
         ```
    
    - 구성과 레플리케이션 컨트롤러의 역할
-      ![rc_po_svc.png](img/ch02/rc_po_svc.png) 
+      ![rc_po_svc.png](img/rc_po_svc.png) 
             - 항상 정확히 하나의 파드 인스턴스를 실행하도록 지정되어 있기 때문에 (replication-controller.json) 
               파드를 강제로 삭제하면 다시 자동으로 하나 더 만든다. 즉, 파드를 복제하고 항상 실행 상태로 만드는 역학을 한다. 
               
@@ -509,14 +507,14 @@ Chapter2. 도커와 쿠버네티스 첫걸음
      ```
        kubectl scale rc crane --replicas=3
      ```
-    ![kubectl_scale.png](img/ch02/kubectl_scale.png) 
-    ![kubectl_scale_result.png](img/ch02/kubectl_scale_result.png) 
+    ![kubectl_scale.png](img/kubectl_scale.png) 
+    ![kubectl_scale_result.png](img/kubectl_scale_result.png) 
     - 쿠버네티스에게 파드 세개를 항상 유지 해야한다는 것을 알려준다. 어떻게 변경해야하는 지는 알려주지 않는데, 이것이 쿠버네티스의 
       기본 원칙 중 하나이다. 쿠버네티스가 어떤 액션을 수행해야하는지 정확하게 알려주는 대신 시스템의 의도하는 상태 (desired state)를 
       선언적으로 변경하면 쿠버네티스가 실제 현재 상태를 (current state)를 검사해 의도한 상태로 조정한다. (reconcile)
   
   - 서비스 호출 시 모든 파드가 요청을 받는지 확인
-    ![kubectl_all_pod_requests.png](img/ch02/kubectl_all_pod_requests.png) 
+    ![kubectl_all_pod_requests.png](img/kubectl_all_pod_requests.png) 
      
       - 요청을 보낼때 마다 다른 pod에서 요청이 처리되는데, 하나 이상의 파드가 서비스 뒤에 존재할때 서비스가 로드밸런서 역할을 한다. 
       
@@ -528,7 +526,7 @@ Chapter2. 도커와 쿠버네티스 첫걸음
       ```
         kubectl get pods -o wide
       ```      
-    ![kubectl-get-pods-wide.png](img/ch02/kubectl-get-pods-wide.png) 
+    ![kubectl-get-pods-wide.png](img/kubectl-get-pods-wide.png) 
       
       - 파드 세부 정보 살펴보기
         ```
@@ -590,9 +588,9 @@ Chapter2. 도커와 쿠버네티스 첫걸음
     ```
 
 - 미니쿠베 대시보드
-  ``` 
+  ```
     minkube dashboard
   ```    
-![minikube_dashboard.png](img/ch02/minikube_dashboard.png) 
-![minikube_dashboard_web.png](img/ch02/minikube_dashboard_web.png) 
+![minikube_dashboard.png](img/minikube_dashboard.png) 
+![minikube_dashboard_web.png](img/minikube_dashboard_web.png) 
    
