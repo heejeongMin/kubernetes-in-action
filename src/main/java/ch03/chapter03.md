@@ -489,3 +489,6 @@ FIELDS:
     kubectl annotate po kubia-manual-v2 heejeong.min/addAnnotation="first annot"
   ```
   ![pod_annotation.png](img/pod_annotation.png)
+  
+  
+  ~/.kube/config
