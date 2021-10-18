@@ -461,7 +461,7 @@ Chapter2. 도커와 쿠버네티스 첫걸음
     2. kubernetes에게 json 파일을 전달하여 replication controller를 생성한다.  
     
         ``` 
-         kubectl create -f 
+         kubectl create -f replication-controller.json
         ``` 
             
         ![kubectl_create_rc.png](img/kubectl_create_rc.png) 
