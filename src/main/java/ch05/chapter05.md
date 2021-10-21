@@ -340,19 +340,190 @@ http라는 이름의 포트 8080을 사용하고 있지만 추후 80으로 변�
             ```
         - 불필요한 홉을 막는 장점이 있지만 단점도 있다. 
             1. 파드가 존재하지 않게 되면 연결이 중단된다. (어노테이션을 사용하지 않을 때 연결이 임의의 글로벌 파드로 전달되지 않음)
+            2. 파드 간 부하가 고르지 않을 수 있다. 
             
     2. 클라이언트 IP가 보존되지 않음 인식
-
+        - 동일 클러스터 내의 클라이언트가 서비스로 연결할 때 서비스의 파드는 클라이언트 IP주소를 얻을 수 있다. 
+        - 하지만 노드 포트로 연결을 수신하면 패킷에서 소스 네트워크 주소변환 (SNAT) 이 수행되어 패킷 소스의 IP가 변경된다. 
+          클라이언트의 IP를 알아야하는 어플리케이션인 경우 문제가 될 수 있다. 
+          
+          
+#### 인그레스 리소스로 서비스 외부 노출 
+- 인그레스가 필요한 이유
+    1. 로드밸런서 서비스는 자신의 공용 IP 주소를 가진 로드밸런서가 필요하지만, 
+    인그레스는 한 IP 주소로 수십 개의 서비스에 접근이 가능하도록 지원한다. 요청한 호스트와 경로에 따라 
+    요청을 전달할 서비스를 달리 할 수 있다. 
+    2. 인그레스는 네트워크 스택의 어플리케이션 계층 (HTTP)에서 작동하며, 서비스가 할 수 없는 쿠키 기반 세션 어피니티 기능도 제공한다. 
+    3. 인그레스는 부하 분산, SSL 종료, 명칭 기반의 가상 호스팅을 제공할 수 있다.
+    ![ingress_path_routing.png](img/ingress_path_routing.png) 
     
+- 인그레스 컨트롤러가 필요한 경우
+    1. 인그레스 리소스를 작동시키려면 인그레스 컨트롤러를 실행해야 한다. 
+        1. Minikube에서 인그레스 애드온 활성화  
+           활성화를 하면, 인그레스 컨트롤러가 또 다른 파드로 기동된다. 
+           ```shell script
+              minikube addons list
+              minikube addons enable ingress
+           ```
+            ![minikube_addons_list.png](img/minikube_addons_list.png) 
 
-    
-    
+            ![minikube_addons_enable_ingress.png](img/minikube_addons_enable_ingress.png) 
 
+        2. 활성화를 하면, 인그레스 컨트롤러가 또 다른 파드로 기동된다. 
+            ```shell script
+             kubectl get pods -n ingress-nginx         
+             or 
+             kubeclt get pods --all-namespaces
+            ```
+            ![ingress_as_a_pod.png](img/ingress_as_a_pod.png) 
+            > --all-namespaces 옵션은 리소스의 네임스페이스를 모르거나 모든 네임스페이스를 나열할때 유용하다. 
 
+- 인그레스 리소스 생성
+    1. yml
+    ```shell script
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata:
+       name: crane-ingress
+       annotations:
+         nginx.ingress.kubernetes.io/rewrite-target: /
+      spec:
+       rules:
+         - host: crane-story.com
+           http:
+            paths:
+              - path: /
+                pathType: Prefix
+                backend:
+                  service:
+                    name: crane-http
+                    port:
+                      number: 8080
+    ```
+    2. 생성된 인스레스 조회 (kubeclt create -f yml파일로 이미 생성함. )
+    ```shell script
+      kubectl get ingress
+    ```
+    ![kubectl_get_ingress.png](img/kubectl_get_ingress.png) 
 
-   
+    3. 인그레스 컨트롤러가 구성된 호스트의 IP를 인그레스 엔드포인트로 지정
+       
+       IP를 알고나면, crane-story.com을 해당 IP로 확인할 수 있도록 DNS 서버를 구성하거나, 
+       /etc/hosts에 추가할수 있다. /etc/hosts에 다음과 같이 추가한다.
+       ```shell script
+        127.0.0.1 crane-story.com
+       ```
+       그런 후 호스트 이름과 정한 포트로 호출하면 호출이된다. 
+       ![ingress_dns_call.png](img/ingress_dns_call.png) 
 
+    4. 인그레스 동작방식
+      
+        ![how_ingress_works.png](img/how_ingress_works.png) 
 
+        * 인그레스 컨트롤러는 헤더에서 클라이언트가 액세스하려는 서비스를 결정하고, 서비스와 관련된 엔드포인트 오브젝트로
+         파드 IP를 조회한 다음 클라이언트 요청을 파드에 전달한다. 
+        * 인그레스 컨트롤러는 요청을 서비스로 전달하지 않고, 파드를 선택하는데에만 사용한다. 
+
+- 하나의 인그레스로 여러 서비스 노출
+    - 인그레스 스펙에는 규칙과 경로가 모두 배열로 되어 있는데 이는 여러 항목을 가질 수 있다는 것을 뜻한다. 
+    ```shell script
+      - host: crane-story.com
+                 http:
+                  paths:
+                    - path: /crane
+                      backend:
+                        service:
+                          name: crane-http
+                          port:
+                            number: 8080
+                    - path: /worklog
+                        backend:
+                          service:
+                            name: crane-worklog-http
+                            port:
+                              number: 8080
+    ```
+    - 서로 다른 호스트로 서로 다른 서비스 매핑
+        ```shell script
+          spec:
+           rules:
+             - host: crane-story.com
+               http:
+                paths:
+                  - path: /
+                    pathType: Prefix
+                    backend:
+                      service:
+                        name: crane-http
+                        port:
+                          number: 8080
+              - host: bar.example.com
+                   http:
+                      paths:
+                        - path: /
+                          pathType: Prefix
+                          backend:
+                            service:
+                              name: bar
+                              port:
+                                number: 8080
+        ```
+      * 컨트롤러가 수신한 요청은 요청의 호스트 헤더 (웹 서버에서 가상 호스트가 처리되는 방식)에 따라 
+      crane-http, bar로 전달된다. DNS는 crane-story.com, bar.example.com 도메인 이름을 
+      모두 인그레스 컨트롤러의 IP주소로 지정해야 한다. 
+      
+- TLS 트래픽을 처리하도록 인그레스 구성
+    - 인그레스를 위한 TLS 인증서 생성
+        - 클라이언트가 인그레서 컨트롤러에 TLS 연결을 하면, 컨트롤러는 TLS 연결을 종료한다. 클라이언트 <> 컨트롤러간의 통신은 암호화 되지만, 
+        컨트롤러와 백엔드 파드 간의 통신은 암호화되지 않고, 지원할 필요가 없다. 
+        - 인그레스 컨트롤러가 TLS 관련된 요청을 처리하려면 인증서와 개인 키를 인그레스에 첨부해야한다. 이 두개는 시크릿(secrete)
+        이라는 쿠버네티스 리소스에 저장하며, 인그레스 메니페스트에서 참조한다. (7장에서 계속 됨) 
+        ```shell script
+        openssl genrsa -out tls.key 2048        
+        openssl req -new -x509 -key tls.key -out tls.cert -days 360 -subj /CN=crane-story.com
+        kubectl create secret tls tls-secret --cert=tls.cert --key=tls.key 
+        kubectl get secret
+        ```
+        ![genrsa.png](img/genrsa.png) 
+        ![keyfiles.png](img/keyfiles.png) 
+        ![kubectl_get_secret.png](img/kubectl_get_secret.png) 
+
+        > CertificateSigningRequest 리소스로 인증서 서명  
+         인증서를 직접 서명하는 대신 CSR 리소스를 만들어 인증서에 서명할 수 있다. 단, 인증서 서명자 구송요소가 클러스터에서 실행중이여야한다.
+        ``` kubectl certificate approve <name of the CSR> ``` 
+       
+    - 인그레스 오브젝트에 시크릿을 참조할 수 있게 업데이트한다. 
+        ```shell script
+          apiVersion: networking.k8s.io/v1
+          kind: Ingress
+          metadata:
+           name: crane-ingress
+           annotations:
+             nginx.ingress.kubernetes.io/rewrite-target: /
+          spec:
+           tls:
+             - hosts:
+                 - crane-story.com
+                 secretName: tls-secret
+           rules:
+             - host: crane-story.com
+               http:
+                paths:
+                  - path: /
+                    pathType: Prefix
+                    backend:
+                      service:
+                        name: crane-http
+                        port:
+                          number: 8080
+        ```
+      * ingress 를 지우는 대신 apply를 사용하여 적용할 수 있다. 
+      ```shell script
+        kubectl apply -f workspace/com-workbook-crane/kubernetes/crane-svc-ingress.yml
+      ```
+      ![apply_tls_ingress.png](img/apply_tls_ingress.png) 
+
+      
 
 
 
