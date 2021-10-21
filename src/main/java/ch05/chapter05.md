@@ -231,6 +231,121 @@ http라는 이름의 포트 8080을 사용하고 있지만 추후 80으로 변�
     - 로드밸런서는 트래픽을 모든 노드의 노드포트로 전달한다. 클라이언트는 로드밸런서의 IP로 서비스에 액세스 한다. 
 3. 단일 IP주소로 여러 서비스를 노출하는 인그레스 리소스 만들기
     - HTTP 레벨(네트워크 7계층)에서 작동함으로 4계층 서비스보다 더 많은 기능을 제공할 수 있다. 
+
+
+1. 노드포트 서비스 사용  
+노드포트 유형의 서비스를 생성하면 쿠버네티스는 모든 노드에 특정 포트를 할당하고 (모든 노드에서 동일한 포트 번호 사용) 
+서비스를 구성하는 파드로 들어오는 연결을 전달한다. 언뜻보면 일반 서비스 (ClusterIP)와 비슷하지만, 다른 점은 서비스의 내부 클러스터IP 뿐만 아니라 모든 노드의 IP와 할당된 노드 포트로 서비스에 액세스할수 있다.   
+
+- 노드 포트 생성 방법
+    - 아래왜 같이 생성하면 책에서는 externalIp가 노드라고 나온다고 하는데 안나와서 찾아보니 앞장에서 처럼 로드밸런서를 생성하고, minikube tunnel을 해야 사용할 수 있따. 
+    - 노드포트가 뜨면 노드포트 타입의 서비스의 ClusterIp를 통해 접근할 수 도 있고, minikube ip를 통한 (원래는 파드여야함?) 지정 포트로 접근할 수 있따. yml에서 지정하는 nodePort는 
+    필수는 아니며,없을 시 쿠버네티스가 임의의 포트를 정한다. 
+    https://github.com/kubernetes/minikube/issues/3966
+        - 접근방법 1. 파드에 원격으로 명령 요청
+            ```shell script
+             kubectl exec crane-glzlb -- curl -s http://10.103.149.113:8080
+            ```
+        - 접근방법 2. minikube 안에서 요청
+            ```shell script
+              minikube ip
+              or 
+              kubectl get nodes minikube -o wide
+          
+              minikube ssh 
+              curl 192.168.49.2:30123    
+              curl 127.0.0.1:30123   
+            ```
+        - 접근방법 3. minkube service 명령어를 통해 브라우저로 노드포트에 연결  
+            ```shell script
+              minikube service crane-nodeport
+            ```
+            ![minikube-service-nodeport.png](img/minikube-service-nodeport.png) 
+
+          - minikube service list 를 하면 미니쿠베에서 접근할 수 있는 서비스 목록을 볼 수 있다. 
+            ![minikube-service-list.png](img/minikube-service-list.png) 
+  
+        ```yaml
+        apiVersion: v1
+        kind: Service
+        metadata:
+         name: crane-nodeport
+        spec:
+         type: NodePort
+         ports:
+         - port: 8080
+           targetPort: 8080
+           nodePort: 30123
+         selector:
+           app: crane
+        ```
+      - 포트에 대한 연결은 임의로 선택된 파드로 전달 되는데, 멀티 노드인경우 연결중인 노드에서 실행중인 포트일 수 도 있고 아닐 수도 있다.  
+        클라이언트가 요청을 보내는 노드는 중요하지 않지만, 만일 첫번째 노드에만 요청하고 해당 노드가 장애가 나면 클라이언트는 더 이상 
+        서비스에 액세스 할 수 없다. 
+      - 그렇기 때문에 모든 노드에 요청을 분산시키고 해당 시점에 오프라인 상태인 노드로 요청을 보내지 않도록 로드 밸런서를 배치하는 것이 좋다. 
+        쿠버네티스 클러스터가 이를 지원하는 경우 (클라우드 인프라에 쿠버네티스를 배포하면 대부분 지원됨) 노드 포트 서비스 대신 로드밸런서를 생성해
+        로드밸런서를 자동으로 프로비저닝할 수 있다.
+      ![nodeport-service.png](img/nodeport-service.png) 
+
+> JSONPath를 사용해 모든 노드의 IP 가져오기
+> ``` kubectl get nodes -o jsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}'  ```
+> 책에서는 ExternalIP를 가지고 오는데 내껀 없어서 대신 InternalIP로 가지고옴 
+>
+- 외부 로드밸런서로 서비스 노출
+    - 클라우드 공급자에서 실행되는 쿠버네티스 클러스터는 일반적으로 클라우드 인프라에서 로드밸런서를 자동으로 프로비저닝 하는 기능을 제공한다. 
+    - 노드 포트 대신 서비스 유형을 로드밸런서로 설정하기만 하면 된다. 로드 밸런서는 공개적으로 액세스 가능한 고유한 IP주소를 가지며 모든 연결을 서비스로 전달한다. 
+    - 로드밸런서 서비스 생성
+      ```yaml
+      apiVersion: v1
+      kind: Service
+      metadata:
+       name: crane-http
+       labels:
+        app: crane
+      spec:
+       type: LoadBalancer
+       ports:
+       - port: 8080
+         protocol: TCP
+         targetPort: 8080
+       selector:
+         app: crane       
+      ```
+      - minikube 임으로 "minikube tunnel" 로 열어주어야 external-ip가 생긴다. 앞 장에서 했듯이 연결은 external ip로 바로 접근 가능하다. 
+      ```shell script
+        curl http://127.0.0.1:8080
+      ```
+      * Session Affinity와 웹 브라우저
+        - External IP를 이용해서 웹브라우저로 연결하면 항상 같은 파드를 호출하는 것을 볼 수 있는데, 이는 keep-alive연결을 사용하고 같은 연결로
+          모든 요청을 보내기 때문이다. 서비스는 연결 수준에서 동작함으로 서비스에 대한 연결을 처음 열면 임의의 파드가 선택된 다음 해당 연결에 속하는 
+          모든 네트워크 패킷은 모두 같은 파드로 전송된다. 따라서 연결이 종료될때까지 session affinity가 none으로 되어있어도 동일한 파드에 연결된다. 
+        - 반면 curl은 항상 새로운 연결을 맺는다. 
+      ![loadbalancer.png](img/loadbalancer.png) 
+      
+      - 로드밸런서는 노드포트의 확장 개념이기 때문에 로드밸런서를 describe 해보면 노드포트가 선택되어 있는것을 확인할 수 있다. 
+      그래서 위에 다이어그램에 로드밸런서로 들어온다음 노드로 접근할때는 노드 포트로 들어가게 된다. 
+      ![loadbalancer_have_nodeport.png](img/loadbalancer_have_nodeport.png) 
+
+
+- 외부 연결의 특성 이해
+    1. 불필요한 네트워크 홉의 이해와 예방
+        - 외부 클라이언트가 노드 포트로 서비스에 접속할 경우 (로드밸런서를 먼저 통과하는 경우도 포함) 임의로 선택된 파드가 연결을 
+        수신하는 동일한 노드에서 실행 중일 수도 있고, 그렇지 않을 수도 있다. 
+        - 파드에 도달하려면 추가적인 네트워크 홉이 필요할 수 있으며 이것이 항상 바람직 한것은 아니다. 외부의 연결을 수신한 노드에서 
+        실행중인 파드로만 외부 트래픽을 전달하도록 서비스를 구성해 추가 홉을 방지할 수 있다. 
+            - 설정 방법
+            ```shell script
+              spec:
+               externalTrafficPolicy: Local
+            ```
+        - 불필요한 홉을 막는 장점이 있지만 단점도 있다. 
+            1. 파드가 존재하지 않게 되면 연결이 중단된다. (어노테이션을 사용하지 않을 때 연결이 임의의 글로벌 파드로 전달되지 않음)
+            
+    2. 클라이언트 IP가 보존되지 않음 인식
+
+    
+
+    
     
 
 
