@@ -407,8 +407,8 @@ FIELDS:
     - 기존 파드 레이블 수정
         - 새로 레이블을 추가할때와 기존의 레이블을 수정할대의 다른 점은 후자는 --overwrite 옵션이 붙어야한다. 
      ```
-        kubectl labels po crane-pjmzv env=local
-        kubectl labels po crane-pjmzv env=debug --overwrite
+        kubectl label po crane-pjmzv env=local
+        kubectl label po crane-pjmzv env=debug --overwrite
      ```
      ![add_labels.png](img/add_labels.png)
      ![modify_labels.png](img/modify_labels.png)
