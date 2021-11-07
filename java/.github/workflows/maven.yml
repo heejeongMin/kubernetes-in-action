@@ -1,0 +1,148 @@
+# This workflow will build a Java project with Maven
+# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
+
+name: build
+
+on:
+  push:
+    branches: [ "master", "release-**" ]
+  pull_request:
+    branches: [ "master", "release-**" ]
+
+jobs:
+  verify-format:
+    runs-on: ubuntu-latest
+    name: Verify Source Format
+    steps:
+      - uses: actions/checkout@v2.4.0
+      - name: Setup Java
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'adopt'
+          java-version: 8.0.x
+      - name: Verify Format and License
+        run: mvn spotless:check
+  build:
+    runs-on: ubuntu-latest
+    name: Java ${{ matrix.java }} Maven Test
+    strategy:
+      matrix:
+        # test against latest update of each major Java version, as well as specific updates of LTS versions:
+        java: [ 8.0.x, 9.0.x, 10.0.x, 11.0.x, 12.0.x, 16.0.x ]
+    steps:
+      - uses: actions/checkout@v2.4.0
+      - name: Setup Java
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'adopt'
+          java-version: ${{ matrix.java }}
+      - name: Cache local Maven repository
+        uses: actions/cache@v2.1.6
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ matrix.java }}-${{ hashFiles('pom.xml', '**/pom.xml') }}
+      - name: Buid with Maven
+        run: |
+          sudo mvn clean test \
+            -q \
+            -B -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+  build-graalvm:
+    runs-on: ubuntu-latest
+    name: GraalVM Maven Test
+    steps:
+      - uses: actions/checkout@v2.4.0
+      - uses: DeLaGuardo/setup-graalvm@48f2bf339ab7d35e31029b1822a213681fdfc42e
+        with:
+          graalvm-version: '19.3.0.java8'
+      - name: Build with Maven
+        run: mvn -q test -B -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+  e2e:
+    runs-on: ubuntu-latest
+    name: End-to-End Test Against Real Cluster
+    steps:
+      - uses: actions/checkout@v2.4.0
+      - name: Create k8s Kind Cluster
+        uses: helm/kind-action@v1.2.0
+      - name: Run E2E with Maven
+        run: |
+          mvn clean install \
+          -q \
+          -Dmaven.test.skip=true
+          cd e2e
+          mvn test \
+            -B \
+            -De2e.skip=false \
+            -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+  examples:
+    runs-on: ubuntu-latest
+    name: Examples smoke test
+    steps:
+      - uses: actions/checkout@v2.4.0
+      - name: Setup Java
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'adopt'
+          java-version: 11.0.x
+      - name: Cache local Maven repository
+        uses: actions/cache@v2.1.6
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+      - name: Build with Maven
+        run: |
+          mvn clean install \
+          -q \
+          -Dmaven.test.skip=true
+      - name: Build Cert Manager Contrib
+        run: |
+          cd client-java-contrib/cert-manager
+          mvn clean install \
+          -q \
+          -Dmaven.test.skip=true
+      - name: Build Prometheus Contrib
+        run: |
+          cd client-java-contrib/prometheus-operator
+          mvn clean install \
+          -q \
+          -Dmaven.test.skip=true
+      - name: Version 10
+        run: |
+          cd examples/examples-release-10
+          mvn clean install
+      - name: Version 11
+        run: |
+          cd examples/examples-release-11
+          mvn clean install
+      - name: Version 12
+        run: |
+          cd examples/examples-release-12
+          mvn clean install
+  codegen:
+    runs-on: ubuntu-latest
+    services:
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
+    name: CRD Java Models Code Generation
+    steps:
+      - uses: actions/checkout@v2.4.0
+      - name: Publish to Registry
+        uses: elgohr/Publish-Docker-Github-Action@master
+        with:
+          name: kubernetes-client/java/crd-model-gen
+          tags: gh-action-tmp
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: docker.pkg.github.com
+          workdir: client-java-contrib
+          no_push: true
+      - name: Run Code-gen for Cert-Manager
+        working-directory: ${{ github.workspace }}/client-java-contrib/cert-manager
+        run: IMAGE_TAG=gh-action-tmp ./update.sh
+      - name: Run Code-gen for Prometheus-Operator
+        working-directory: ${{ github.workspace }}/client-java-contrib/prometheus-operator
+        run: IMAGE_TAG=gh-action-tmp ./update.sh
+
