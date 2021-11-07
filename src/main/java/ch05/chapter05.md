@@ -165,7 +165,7 @@ http라는 이름의 포트 8080을 사용하고 있지만 추후 80으로 변�
         > crane-http.default.svc.cluster.local
         - crane-http : 서비스 이름
         - default : 서비스가 정의된 네임스페이스
-        - svc.cluster.local : 모든 클러스터의 로컬 섭시스 이름에 사용되는 클러스터의 도메인 접미사
+        - svc.cluster.local : 모든 클러스터의 로컬 서비스 이름에 사용되는 클러스터의 도메인 접미사
         
         a. 파드의 컨테이너에서 셸 실행
         ```shell script
