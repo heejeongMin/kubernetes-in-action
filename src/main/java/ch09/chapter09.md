@@ -273,7 +273,11 @@ spec:
 
 - 롤아웃 데드라인 설정
     - 기본적으로 롤아웃이 10분동안 진행되지 않으면 실패한 것으로 간주한다. 스펙 수정은 progressDeadlineSeconds 속성으로 할 수 있다.
-    
+    - 아래 스크린샷처럼 실패한것 까지 확인 되면, 롤아웃이 계속 진행되지 않음으로 취소 할 수 있따. 그런데 아예 yaml을 새로 시작한거라, 
+      이전 히스토리가 없기 때문에 no rollout history found for deployment "kubia" 가 나온다. 만약에 수정하고 apply했었으면 업데이트가 되어서 이력이 남아있었을것. 
+        ```shell script
+          kubectl rollout undo deployment kubia
+       ```
 ![deadline.png](img/deadline.png) 
 
 
