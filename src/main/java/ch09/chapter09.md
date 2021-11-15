@@ -190,6 +190,10 @@ kubectl rollout undo deployment kubia
 ```
 ![undo.png](img/undo.png)
 
+- 위에서 새 버전을 배포했을때 이전에 사용한 레플리카셋이 비활성화 된 상태로 남아 있었는데 이 것이 개정 이력에서 참조되게 된다. 
+각 레플리카 셋은 해당 특정 버전에서의 디플로이먼트의 전체 정보를 저장함으로, 수동으로 삭제하면 안된다. 수동으로 삭제가 되면 
+디플로이먼트 기록에서 특정버전을 읽어서 롤백할 수 없게 된다. 
+- 개정 내역의 수는 editionHistroyLimit 속성에 의해 제한되며, 기본값은 10 이며, 이전 리플리카셋은 자동으로 삭제된다. 
 
 #### 디플로이먼트 히스토리
 ```shell script
@@ -204,7 +208,29 @@ kubectl apply -f kubia-deployment-v1.yaml --record
 ```
 근데 ... 이력이 apply 이력만 계속 나오네 .. ㅠ.ㅠ ? 
 
-![weird_history.png](img/weird_history.png)    
+![weird_history.png](img/weird_history.png) 
+
+### 롤아웃 속도 제어
+- maxSurge : 디플로이먼트가 의도하는 레플리카 수보다 얼마나 많은 파드 인스턴스 수를 허용할 수 있을지 정한다. 
+기본은 25%로 설정되고, 의도한 개수보다 최대 25% 더 많은 파드 인스턴스가 있을 수 있다는 뜻이다.
+- maxUnavailable : 업데이트중 의도하는 레플리카 수를 기준으로 사용할 수 없는 파드 인스턴스의 수이다. (기본 25%)
+
+![maxSurge_maxUnavailable1.png](img/maxSurge_maxUnavailable1.png) 
+![maxSurge_maxUnavailable2.png](img/maxSurge_maxUnavailable2.png) 
+
+### 롤아웃 일시 중지/재개
+- 롤아웃 일시 중지
+```shell script
+kubectl rollout pause deployment kubia
+```
+- 롤아웃 재개
+```shell script
+kubectl rollout resume deployment kubia
+```
 
 
 
+
+
+
+https://kubernetes.io/ko/docs/concepts/workloads/controllers/deployment/
