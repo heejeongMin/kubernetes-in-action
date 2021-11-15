@@ -215,6 +215,7 @@ kubectl apply -f kubia-deployment-v1.yaml --record
 기본은 25%로 설정되고, 의도한 개수보다 최대 25% 더 많은 파드 인스턴스가 있을 수 있다는 뜻이다.
 - maxUnavailable : 업데이트중 의도하는 레플리카 수를 기준으로 사용할 수 없는 파드 인스턴스의 수이다. (기본 25%)
 
+-> min/max 파드를 말하는 것 같음. 최소 몇개는 무조건 떠있어야 하고, 최대 몇개까지만 띄우면서 롤링배포 할수 있다는 ..  
 ![maxSurge_maxUnavailable1.png](img/maxSurge_maxUnavailable1.png) 
 ![maxSurge_maxUnavailable2.png](img/maxSurge_maxUnavailable2.png) 
 
@@ -228,9 +229,52 @@ kubectl rollout pause deployment kubia
 kubectl rollout resume deployment kubia
 ```
 
+### 잘못된 버전의 롤아웃 방지
+- 앞에서 minReadSecond 를 주고 배포 속도를 늦추었는데, 이 기능을 사용하면 오작동 버전의 배포를 방지 하는 효과를 얻을 수 있다.
+- 일반적으로 파드는 실제 트래픽을 수신하기 시작한 후 파드가 준비 상태를 계속 보고 할 수 있도록 minReadySeconds를 훨씬 높게 설정한다. 
+- 버전 v3이 완전히 롤아웃 되는 것을 방지하기 위한 레디니스 프로브 정의
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubia
+  labels:
+    app: kubia
+spec:
+  replicas: 3
+  minReadySeconds: 10
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: kubia
+  template:
+    metadata:
+      name: kubia
+      labels:
+        app: kubia
+    spec:
+      containers:
+        - name: nodejs
+          image: luksa/kubia:v3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            periodSeconds: 1
+```
+- v3은 요청을 받다가 500에러가 나는 이미지였기 때문에 파드가 준비되지 않는다. maxUnavailable 속성을 0으로 설정 했기때문에 원래 파드도 제거하지 않는다. 
+- 만일 이런 경우 minReadySeconds를 올바르게 설정하지 않고 레디니스 프로브만 정의하는 경우, 레디니스 프로브의 첫번째 호출이 성공하면, 
+즉시 새 파드가 사용 가능한 것으로 간주되니, minReadySeconds를 적절하게 설정해야한다.  
+![pod_not_ready.png](img/pod_not_ready.png) 
 
-
-
+- 롤아웃 데드라인 설정
+    - 기본적으로 롤아웃이 10분동안 진행되지 않으면 실패한 것으로 간주한다. 스펙 수정은 progressDeadlineSeconds 속성으로 할 수 있다.
+    
+![deadline.png](img/deadline.png) 
 
 
 https://kubernetes.io/ko/docs/concepts/workloads/controllers/deployment/
