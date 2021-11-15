@@ -148,10 +148,63 @@ kubectl rollout status deployment kubia
     - 대안으로 Recreate 전략이 있는데, 수정 후 모든 파드를 삭제 후 진행하기 때문에 다운타임이 생긴다. 
     
 - 데모 목적으로 롤링 업데이트 속도 느리게 하기
+```shell script
+kubectl patch deployment kubia -p '{"spec": {"minReadySeconds":10}}'
+```
+    - 디플로이먼트 스펙을 변경하였지만, 파드 템플릿을 변경한 것은 아니기 때문에 파드가 업데이트되지는 않는다. 
+
+- 롤링 업데이트 시작
+    - 롤링업데이트 프로세스의 진행사항을 추적하려면 먼저 다른 터미널에서 curl 요청을 보내볼 수있다. 
+    
+- 디플로이먼트의 파드 스펙을 변경해보기 
+```shell script
+kubectl set image deployment kubia nodejs=luksa/kubia:v2
+```
+![set_image.png](img/set_image.png)  
+
+> 디플로이먼트와 그 외의 리소스를 수정하는 방법
+> 1. kubectl edit : 기본 편집기로 오브젝트의 메니페스트를 편집. 변경 후 파일을 저장하고 편집기를 종료 하면 반영된다. 
+>    ex ) kubectl edit deployment kubia
+> 2. kubectl patch : 오브젝트의 개별 속성을 수정한다. 
+
+![way_to_edit.png](img/way_to_edit.png)  
+
+- 변경 후 디플로이먼트의 리플리카셋을 조회해 보면 새로운 스펙의 파드를 띄우고 있는 것을 확인할 수 있따.
+```shell script
+kubectl get rs
+```
+![get_rs.png](img/get_rs.png)  
+![get_po.png](img/get_po.png)  
+
+![deployment_update_rollout.png](img/deployment_update_rollout.png)  
 
 
+#### 디플로이먼트 롤백
+1. 이전버전으로 롤백 
+```shell script
+kubectl rollout undo deployment kubia
+```
+2. 특정버전으로 롤백 
+```shell script
+ kubectl rollout undo deployment kubia --to-reivision=1
+```
+![undo.png](img/undo.png)
 
 
+#### 디플로이먼트 히스토리
+```shell script
+ kubectl rollout history deployment kubia
+```
+- 근데 조회하니 change-cause가 모두 none으로 나오는데 이유는 내가 deployment 를 띄울 때 --record 옵션을 주지 않아서 그렇다. 
+![wo_record.png](img/wo_record.png)    
+
+이력을 보기 위해 옵션을 주고 다시 시작한다. 
+```shell script
+kubectl apply -f kubia-deployment-v1.yaml --record
+```
+근데 ... 이력이 apply 이력만 계속 나오네 .. ㅠ.ㅠ ? 
+
+![weird_history.png](img/weird_history.png)    
 
 
 
